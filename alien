@@ -39,7 +39,7 @@
     padding:8px 10px;font-weight:900;
   }
 
-  /* ===== Remonter au max: tout en haut, très peu d'espace ===== */
+  /* ===== Remonter au max ===== */
   #boardWrap{
     flex:1;
     display:flex;
@@ -78,7 +78,7 @@
   .boardLayout{
     display:grid;
     grid-template-columns: auto 56px;
-    grid-template-rows: auto 32px;
+    grid-template-rows: auto auto;
     column-gap:8px;
     row-gap:8px;
     align-items:start;
@@ -142,10 +142,9 @@
     display:flex;
     align-items:center;
     justify-content:center;
-    text-align:center;
-    font-weight:900;
     overflow:hidden;
   }
+
   .colPanel{
     grid-column:1;
     grid-row:2;
@@ -153,37 +152,64 @@
     grid-template-columns:repeat(3, var(--cw));
     gap:var(--gap);
   }
+
+  /* ✅ FIX: cases COL plus hautes + mise sous label */
   .colBox{
     width:var(--cw);
-    height:var(--ch);
+    height:calc(var(--ch) + 10px); /* +10px pour 2 lignes */
     background:var(--betbg);
     border-radius:10px;
     border:2px solid rgba(0,0,0,0.35);
     position:relative;
-    display:flex;
-    align-items:center;
-    justify-content:center;
-    text-align:center;
-    font-weight:900;
     overflow:hidden;
   }
+
+  /* label (DOZ/COL) */
   .label{
-    position:absolute; left:6px; top:6px;
+    position:absolute;
+    left:6px;
+    top:6px;
     font-size:11px;
-    color:rgba(230,255,233,0.85);
+    color:rgba(230,255,233,0.90);
     font-weight:900;
     z-index:2;
   }
-  .colBox .label{top:5px;font-size:10px}
+
+  /* DOZ label reste à gauche */
+  .dozBox .label{left:6px; top:6px; text-align:left;}
+
+  /* COL label centré en haut */
+  .colBox .label{
+    left:0; right:0;
+    top:4px;
+    text-align:center;
+    font-size:11px;
+  }
+
+  /* valeurs mises */
   .stake{
-    font-size:18px;
     color:var(--neon);
+    font-weight:900;
     text-shadow:0 1px 0 rgba(0,0,0,.45);
     z-index:2;
   }
-  .colBox .stake{font-size:16px}
 
-  /* ✅ Juste colorer les cases DOZ/COL en vert (propre) */
+  /* DOZ: mise au centre */
+  .dozBox .stake{
+    font-size:18px;
+    position:relative;
+  }
+
+  /* COL: mise sous le label */
+  .colBox .stake{
+    position:absolute;
+    left:0; right:0;
+    top:20px;
+    text-align:center;
+    font-size:16px;
+  }
+
+  /* ✅ Juste colorer les cases DOZ/COL en vert */
   .hl-neon{
     outline:3px solid var(--neon);
     box-shadow:inset 0 0 0 3px var(--neon), 0 0 10px rgba(57,255,20,.20);
