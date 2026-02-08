@@ -39,7 +39,7 @@
     padding:8px 10px;font-weight:900;
   }
 
-  /* ===== Remonter au max ===== */
+  /* Remonter au max */
   #boardWrap{
     flex:1;
     display:flex;
@@ -117,20 +117,20 @@
   .press{animation:press .14s ease-in-out}
   @keyframes press{0%{filter:brightness(1)}50%{filter:brightness(.6)}100%{filter:brightness(1)}}
 
-  /* Refs pendant capture (uniquement) */
+  /* Refs pendant capture */
   .refpick{
     outline:2px solid rgba(57,255,20,0.55);
     box-shadow:inset 0 0 0 2px rgba(57,255,20,0.55);
   }
 
-  /* Panels DOZ / COL (cases) */
+  /* DOZ à droite */
   .dozPanel{
     grid-column:2;
     grid-row:1;
     display:flex;
     flex-direction:column;
     gap:var(--gap);
-    margin-top:calc(var(--ch) + var(--gap)); /* sous le 0 */
+    margin-top:calc(var(--ch) + var(--gap));
   }
   .dozBox{
     width:56px;
@@ -144,7 +144,20 @@
     justify-content:center;
     overflow:hidden;
   }
+  .dozBox .label{
+    position:absolute;left:6px;top:6px;
+    font-size:11px;color:rgba(230,255,233,0.90);
+    font-weight:900;z-index:2;
+  }
+  .dozBox .stake{
+    font-size:18px;
+    color:var(--neon);
+    font-weight:900;
+    text-shadow:0 1px 0 rgba(0,0,0,.45);
+    z-index:2;
+  }
 
+  /* COL en bas */
   .colPanel{
     grid-column:1;
     grid-row:2;
@@ -153,63 +166,39 @@
     gap:var(--gap);
   }
 
-  /* ✅ FIX: cases COL plus hautes + mise sous label */
+  /* ✅ FIX DEFINITIF: COL en 2 lignes (grid) */
   .colBox{
     width:var(--cw);
-    height:calc(var(--ch) + 10px); /* +10px pour 2 lignes */
+    height:calc(var(--ch) + 14px); /* un peu plus haut */
     background:var(--betbg);
     border-radius:10px;
     border:2px solid rgba(0,0,0,0.35);
-    position:relative;
     overflow:hidden;
-  }
 
-  /* label (DOZ/COL) */
-  .label{
-    position:absolute;
-    left:6px;
-    top:6px;
+    display:grid;
+    grid-template-rows: 14px 1fr;  /* label / mise */
+    align-items:center;
+    justify-items:center;
+    position:relative;
+  }
+  .colBox .label{
     font-size:11px;
     color:rgba(230,255,233,0.90);
     font-weight:900;
+    line-height:1;
     z-index:2;
+    margin-top:2px;
   }
-
-  /* DOZ label reste à gauche */
-  .dozBox .label{left:6px; top:6px; text-align:left;}
-
-  /* COL label centré en haut */
-  .colBox .label{
-    left:0; right:0;
-    top:4px;
-    text-align:center;
-    font-size:11px;
-  }
-
-  /* valeurs mises */
-  .stake{
+  .colBox .stake{
+    font-size:16px;
     color:var(--neon);
     font-weight:900;
     text-shadow:0 1px 0 rgba(0,0,0,.45);
     z-index:2;
+    line-height:1;
   }
 
-  /* DOZ: mise au centre */
-  .dozBox .stake{
-    font-size:18px;
-    position:relative;
-  }
-
-  /* COL: mise sous le label */
-  .colBox .stake{
-    position:absolute;
-    left:0; right:0;
-    top:20px;
-    text-align:center;
-    font-size:16px;
-  }
-
-  /* ✅ Juste colorer les cases DOZ/COL en vert */
+  /* ✅ juste cases DOZ/COL en vert */
   .hl-neon{
     outline:3px solid var(--neon);
     box-shadow:inset 0 0 0 3px var(--neon), 0 0 10px rgba(57,255,20,.20);
@@ -445,17 +434,14 @@ function updateHUD(){
   } else {
     const nxt = state.spinIndex + 1;
     const due = state.pending.filter(p => p.due === nxt);
-    if(!due.length){
-      statusRow.textContent = `En attente: aucun jeu demandé au prochain coup`;
-    } else {
-      const parts = due.map(p=>{
-        const st = state.refState.get(p.ref) || {lvl:0};
-        const mult = WHIDDARTE[Math.min(st.lvl, WHIDDARTE.length-1)];
-        const stake = unitForLvl(st.lvl);
-        return `${p.ref} → ${p.doz}+${p.col} (x${mult}=${stake})`;
-      });
-      statusRow.textContent = `Prochain coup: ${parts.join(" | ")}`;
-    }
+    statusRow.textContent = due.length
+      ? `Prochain coup: ${due.map(p=>{
+          const st = state.refState.get(p.ref) || {lvl:0};
+          const mult = WHIDDARTE[Math.min(st.lvl, WHIDDARTE.length-1)];
+          const stake = unitForLvl(st.lvl);
+          return `${p.ref}→${p.doz}+${p.col}(x${mult}=${stake})`;
+        }).join(" | ")}`
+      : `En attente: aucun jeu demandé au prochain coup`;
   }
 
   const d = state.lastDelta || 0;
@@ -521,12 +507,7 @@ function scheduleIfRef(cur){
   if(!state.refSet.has(cur)) return;
   const info = state.after.get(cur);
   if(!info) return;
-  state.pending.push({
-    due: state.spinIndex + 1,
-    ref: cur,
-    doz: info.doz,
-    col: info.col
-  });
+  state.pending.push({ due: state.spinIndex + 1, ref: cur, doz: info.doz, col: info.col });
 }
 
 /* Main */
@@ -555,8 +536,7 @@ function pushNumber(n){
       state.refState.set(spin, {lvl:0, profit:0});
     }
     if(prev !== null) updateAfterMapping(prev, spin);
-
-    if(state.refs.length >= 12) state.capturing = false; // éteint refs ensuite
+    if(state.refs.length >= 12) state.capturing = false;
     render();
     return;
   }
