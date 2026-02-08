@@ -1,0 +1,422 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Alien — mobile</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no"/>
+<style>
+  :root{
+    --bg:#0F1E17; --panel:#12261E; --txt:#E6FFE9;
+    --red:#B91C1C; --blk:#0B0B0B; --zero:#1F6F43;
+    --outline:#39FF14; --stake:#00BFFF; --hole:#FFA500;
+  }
+  html,body{margin:0;height:100%;background:var(--bg);color:var(--txt);font-family:-apple-system,system-ui,Segoe UI,Roboto,Helvetica,Arial}
+  #page{min-height:100dvh;display:flex;flex-direction:column}
+  #topbar{display:flex;align-items:center;justify-content:center;gap:10px;padding:8px;flex-wrap:wrap}
+  .btn{background:#20425E;color:var(--txt);border:none;border-radius:10px;padding:8px 14px;font-weight:800}
+  #zoom{flex:1;max-width:280px}
+  #stakeSel{background:#20425E;color:var(--txt);border:none;border-radius:10px;padding:8px 10px;font-weight:900}
+
+  /* zone centrale: HUD au-dessus, tapis en dessous, tout centré */
+  #boardWrap{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;padding:6px}
+
+  /* HUD non-superposé */
+  #hud{
+    background:rgba(0,0,0,.35); color:#E6FFE9;
+    border:1px solid rgba(255,255,255,.12); border-radius:10px;
+    padding:6px 8px; font-weight:800; font-size:12px; backdrop-filter: blur(2px);
+    width:max-content; max-width:92vw;
+  }
+  #hud .row{margin-top:4px}
+  #hud .pill{display:inline-block; min-width:18px; text-align:center; margin-left:6px;
+             background:#20425E; border-radius:8px; padding:1px 6px; font-weight:900;}
+  .gain{color:#39FF14} .loss{color:#FFA500}
+  #hud .last{max-width:80vw; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+
+  /* Tapis */
+  #board{background:var(--panel);padding:8px;border-radius:12px;box-shadow:0 2px 8px rgba(0,0,0,.4);transform-origin:top center}
+  .grid{display:grid;grid-template-columns:repeat(3, 44px);grid-auto-rows:32px;gap:3px}
+  .cell{position:relative;width:44px;height:32px;display:flex;align-items:center;justify-content:center;
+        color:var(--txt);font-weight:800;border-radius:6px;user-select:none;-webkit-tap-highlight-color:transparent;overflow:hidden}
+  .zero{grid-column:1/span 3;width:calc(44px*3 + 3px*2);background:var(--zero)}
+  .red{background:var(--red)} .blk{background:var(--blk)}
+  .num{pointer-events:none;z-index:2}
+  .hit{position:absolute;inset:0;border-radius:6px;cursor:pointer;z-index:3}
+  .outline{outline:3px solid var(--outline);box-shadow:inset 0 0 0 3px var(--outline)}
+  .badge{position:absolute;right:4px;top:3px;color:var(--stake);font-weight:900;font-size:12px;text-shadow:0 1px 0 rgba(0,0,0,.5);z-index:4}
+  .press{animation:press .14s ease-in-out}
+  @keyframes press{0%{filter:brightness(1)}50%{filter:brightness(.6)}100%{filter:brightness(1)}}
+  .veil::before{content:"";position:absolute;inset:0;background:rgba(57,255,20,0.18);z-index:1}
+</style>
+</head>
+<body>
+<div id="page">
+  <div id="topbar">
+    <button id="btnR" class="btn" title="Rafraîchir Alien (sans reset total)">R</button>
+    <button id="btnX" class="btn" title="Reset total">X</button>
+
+    <select id="stakeSel" title="Mise de base">
+      <option value="5">Mise 5</option>
+      <option value="10">Mise 10</option>
+      <option value="20">Mise 20</option>
+    </select>
+
+    <input id="zoom" type="range" min="60" max="180" value="100" title="Zoom">
+  </div>
+
+  <div id="boardWrap">
+    <!-- HUD au-dessus, séparé -->
+    <div id="hud">
+      <div>Refs <span id="cnt" class="pill">0/12</span> • Best <span id="best" class="pill">0</span></div>
+      <div class="row last" id="last">—</div>
+      <div class="row" id="nextRow">Prochain: —</div>
+      <div class="row">Δ <span id="delta" class="pill">0</span> • Balance <span id="bal" class="pill">0</span></div>
+    </div>
+
+    <!-- Tapis centré -->
+    <div id="board">
+      <div class="grid" id="grid"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ===== Modèle tapis ===== */
+const ROUGE = new Set([1,3,5,7,9,12,14,16,18,19,21,23,25,27,30,32,34,36]);
+const GRID = [
+  [1,4,7,10,13,16,19,22,25,28,31,34],
+  [2,5,8,11,14,17,20,23,26,29,32,35],
+  [3,6,9,12,15,18,21,24,27,30,33,36],
+];
+
+const COL1 = new Set([1,4,7,10,13,16,19,22,25,28,31,34]);
+const COL2 = new Set([2,5,8,11,14,17,20,23,26,29,32,35]);
+const COL3 = new Set([3,6,9,12,15,18,21,24,27,30,33,36]);
+
+const DOZ1 = new Set([1,2,3,4,5,6,7,8,9,10,11,12]);
+const DOZ2 = new Set([13,14,15,16,17,18,19,20,21,22,23,24]);
+const DOZ3 = new Set([25,26,27,28,29,30,31,32,33,34,35,36]);
+
+function spinToDozCol(n){
+  if(n===0) return [null,null];
+  const doz = DOZ1.has(n)?"DOZ1":(DOZ2.has(n)?"DOZ2":"DOZ3");
+  const col = COL1.has(n)?"COL1":(COL2.has(n)?"COL2":"COL3");
+  return [doz,col];
+}
+
+function inGroup(group, n){
+  if(group==="DOZ1") return DOZ1.has(n);
+  if(group==="DOZ2") return DOZ2.has(n);
+  if(group==="DOZ3") return DOZ3.has(n);
+  if(group==="COL1") return COL1.has(n);
+  if(group==="COL2") return COL2.has(n);
+  if(group==="COL3") return COL3.has(n);
+  return false;
+}
+
+/* ===== Alien (minimal) ===== */
+const WHIDDARTE = [1,1,2,2,4,4,8,8,16,16,32,32];
+
+const state = {
+  spinIndex: -1,
+  last5: [],
+  lastDelta: 0,
+
+  baseStake: 5,
+
+  // bank = balance globale (Alien)
+  bank: 0,
+  bestBank: 0,
+
+  // capture refs
+  capturing: true,
+  refs: [],          // array length 12
+  refSet: new Set(), // quick lookup
+
+  // mapping: ref -> {doz, col} (dernier "après ref")
+  after: new Map(),
+
+  // per-ref state: ref -> {lvl, profit}
+  refState: new Map(),
+
+  // pending bets: array of {due, ref, doz, col}
+  pending: []
+};
+
+function clamp37(n){ n = Number(n)||0; n%=37; if(n<0) n+=37; return n; }
+function getBaseStake(){
+  const v = Number(document.getElementById('stakeSel').value);
+  return (v===5||v===10||v===20)?v:5;
+}
+function unitForLvl(lvl){
+  lvl = Math.max(0, Math.min(WHIDDARTE.length-1, lvl|0));
+  return state.baseStake * WHIDDARTE[lvl];
+}
+
+function clearBoardMarks(){
+  document.querySelectorAll('.cell').forEach(el=>{
+    el.classList.remove('outline','veil');
+    const b = el.querySelector('.badge'); if(b) b.style.display='none';
+  });
+}
+
+/* UI: on montre juste les refs (outline) + badge = lvl actuel (multiplicateur) */
+function render(){
+  clearBoardMarks();
+
+  for(const r of state.refs){
+    const el = document.querySelector(`.cell[data-n="${r}"]`);
+    if(!el) continue;
+    el.classList.add('outline','veil');
+    const st = state.refState.get(r);
+    const mult = st ? WHIDDARTE[Math.min(st.lvl, WHIDDARTE.length-1)] : 1;
+    const b = el.querySelector('.badge');
+    if(b){
+      b.textContent = String(mult);
+      b.style.display = 'block';
+    }
+  }
+
+  updateHUD();
+}
+
+/* ===== Auto-init (quand nouveau record best) ===== */
+function autoInitOnNewBest(){
+  if(state.bank > state.bestBank){
+    state.bestBank = state.bank;
+    // reset niveaux de montante
+    for(const [r, st] of state.refState.entries()){
+      st.lvl = 0;
+    }
+    // purge pending (sinon incohérence)
+    state.pending = [];
+  }
+}
+
+/* ===== Settlement Alien ===== */
+function settleDue(spin){
+  const i = state.spinIndex;
+  if(!state.pending.length) return;
+
+  const keep = [];
+  for(const p of state.pending){
+    if(p.due !== i){ keep.push(p); continue; }
+
+    const ref = p.ref;
+    const st = state.refState.get(ref);
+    if(!st) continue;
+
+    const stake = unitForLvl(st.lvl);
+
+    let delta = 0;
+    if(spin === 0){
+      delta = -2 * stake;
+    } else {
+      const hitD = p.doz && inGroup(p.doz, spin);
+      const hitC = p.col && inGroup(p.col, spin);
+      delta += hitD ? (2*stake) : (-stake);
+      delta += hitC ? (2*stake) : (-stake);
+    }
+
+    st.profit += delta;
+    state.bank += delta;
+
+    // progression montante
+    if(spin !== 0){
+      const hitD = p.doz && inGroup(p.doz, spin);
+      const hitC = p.col && inGroup(p.col, spin);
+      if(hitD && hitC) st.lvl = 0;
+      else st.lvl = Math.min(st.lvl + 1, WHIDDARTE.length-1);
+    } else {
+      st.lvl = Math.min(st.lvl + 1, WHIDDARTE.length-1);
+    }
+  }
+
+  state.pending = keep;
+
+  // check auto-init record
+  autoInitOnNewBest();
+}
+
+/* ===== Mapping after ref ===== */
+function updateAfterMapping(prev, cur){
+  if(!state.refSet.has(prev)) return;
+  const [doz, col] = spinToDozCol(cur);
+  if(!doz || !col) return; // ignore if cur==0 (no doz/col)
+  state.after.set(prev, {doz, col});
+}
+
+/* ===== Schedule bet when ref appears ===== */
+function scheduleIfRef(cur){
+  if(!state.refSet.has(cur)) return;
+  const info = state.after.get(cur);
+  if(!info) return; // no mapping yet
+  state.pending.push({
+    due: state.spinIndex + 1,
+    ref: cur,
+    doz: info.doz,
+    col: info.col
+  });
+}
+
+/* ===== Next display ===== */
+function nextText(){
+  const nxt = state.spinIndex + 1;
+  const due = state.pending.filter(p=>p.due===nxt);
+  if(!due.length) return "Prochain: —";
+  const parts = due.map(p=>{
+    const st = state.refState.get(p.ref) || {lvl:0};
+    const stake = unitForLvl(st.lvl);
+    return `${p.ref} → ${p.doz}+${p.col} (${stake})`;
+  });
+  return "Prochain: " + parts.join(" | ");
+}
+
+/* ===== MAIN click ===== */
+function pushNumber(n){
+  state.baseStake = getBaseStake();
+
+  const spin = clamp37(n);
+  const prev = (state.spinIndex >= 0) ? state.last5[state.last5.length-1] : null;
+
+  state.spinIndex += 1;
+
+  // keep last5 list
+  state.last5.push(spin);
+  if(state.last5.length > 5) state.last5.shift();
+
+  // delta default
+  state.lastDelta = 0;
+
+  // settlement first (due this spin)
+  if(!state.capturing){
+    const bankBefore = state.bank;
+    settleDue(spin);
+    state.lastDelta = state.bank - bankBefore;
+  }
+
+  // capture refs phase (12 first clicks)
+  if(state.capturing){
+    if(!state.refSet.has(spin)){
+      state.refs.push(spin);
+      state.refSet.add(spin);
+      state.refState.set(spin, {lvl:0, profit:0});
+    }
+    if(state.refs.length >= 12){
+      state.capturing = false;
+    }
+    // during capture: we still update mapping, it’s harmless
+    if(prev !== null) updateAfterMapping(prev, spin);
+    updateHUD();
+    render();
+    return;
+  }
+
+  // update mapping after previous spin (if prev was ref)
+  if(prev !== null) updateAfterMapping(prev, spin);
+
+  // schedule new bet if current is ref
+  scheduleIfRef(spin);
+
+  render();
+}
+
+/* ===== UI ===== */
+function cellHTML(n){
+  const cls=(n===0)?"cell zero":("cell "+(ROUGE.has(n)?"red":"blk"));
+  return `<div class="${cls}" data-n="${n}">
+    <div class="num">${n}</div>
+    <div class="badge" style="display:none">1</div>
+    <div class="hit"></div>
+  </div>`;
+}
+function buildGrid(){
+  const grid=document.getElementById('grid');
+  grid.innerHTML="";
+  grid.insertAdjacentHTML('beforeend', cellHTML(0));
+  for(let r=0;r<12;r++){
+    for(let c=0;c<3;c++){
+      grid.insertAdjacentHTML('beforeend', cellHTML(GRID[c][r]));
+    }
+  }
+  document.querySelectorAll('.cell .hit').forEach(hit=>{
+    hit.addEventListener('click', ()=>{
+      const cell=hit.parentElement;
+      const n=parseInt(cell.getAttribute('data-n'),10);
+      cell.classList.remove('press'); void cell.offsetWidth; cell.classList.add('press');
+      pushNumber(n);
+    });
+  });
+}
+
+/* ===== HUD ===== */
+function updateHUD(){
+  const cnt=document.getElementById('cnt');
+  const last=document.getElementById('last');
+  const delta=document.getElementById('delta');
+  const bal=document.getElementById('bal');
+  const best=document.getElementById('best');
+  const nextRow=document.getElementById('nextRow');
+
+  cnt.textContent = state.capturing ? `${state.refs.length}/12` : `${state.refs.length}/12`;
+  best.textContent = String(state.bestBank);
+
+  last.textContent = state.last5.length ? state.last5.join(' ') : '—';
+
+  nextRow.textContent = state.capturing
+    ? `Mode capture: clique 12 refs (reste ${Math.max(0, 12 - state.refs.length)})`
+    : nextText();
+
+  const d = state.lastDelta || 0;
+  delta.textContent = d>=0?`+${d}`:`${d}`;
+  delta.classList.toggle('gain', d>0);
+  delta.classList.toggle('loss', d<0);
+
+  bal.textContent = `${state.bank}`;
+}
+
+/* ===== Contrôles ===== */
+document.getElementById('btnR').addEventListener('click', ()=>{
+  // refresh Alien sans reset total: purge pending + mapping after
+  state.after = new Map();
+  state.pending = [];
+  state.lastDelta = 0;
+  render();
+});
+
+document.getElementById('btnX').addEventListener('click', ()=>{
+  // reset total (important)
+  state.spinIndex = -1;
+  state.last5 = [];
+  state.lastDelta = 0;
+  state.baseStake = getBaseStake();
+
+  state.bank = 0;
+  state.bestBank = 0;
+
+  state.capturing = true;
+  state.refs = [];
+  state.refSet = new Set();
+  state.after = new Map();
+  state.refState = new Map();
+  state.pending = [];
+
+  render();
+});
+
+document.getElementById('stakeSel').addEventListener('change', ()=>{
+  state.baseStake = getBaseStake();
+  render();
+});
+
+document.getElementById('zoom').addEventListener('input', e=>{
+  const f=e.target.value/100.0;
+  document.getElementById('board').style.transform=`scale(${f})`;
+});
+
+/* Init */
+buildGrid();
+render();
+</script>
+</body>
+</html>
