@@ -11,11 +11,9 @@
     --neon:#39FF14;
     --betbg:#173A31;
 
-    /* tailles grille */
     --cw:44px;
     --ch:32px;
     --gap:3px;
-    --hl:6px;  /* épaisseur encadré */
   }
 
   html,body{
@@ -27,29 +25,29 @@
 
   #topbar{
     display:flex;align-items:center;justify-content:center;
-    gap:10px;padding:8px;flex-wrap:wrap;
+    gap:8px;padding:6px;flex-wrap:wrap;
   }
   .btn{
     background:#20425E;color:var(--txt);
     border:none;border-radius:10px;
     padding:8px 14px;font-weight:800;
   }
-  #zoom{flex:1;max-width:280px}
+  #zoom{flex:1;max-width:260px}
   #stakeSel{
     background:#20425E;color:var(--txt);
     border:none;border-radius:10px;
     padding:8px 10px;font-weight:900;
   }
 
-  /* ===== Remonter le tapis (collé sous HUD) ===== */
+  /* ===== Remonter au max: tout en haut, très peu d'espace ===== */
   #boardWrap{
     flex:1;
     display:flex;
     flex-direction:column;
     align-items:center;
     justify-content:flex-start;
-    gap:6px;
-    padding:4px 6px 6px;
+    gap:4px;
+    padding:2px 6px 6px;
   }
 
   /* HUD */
@@ -87,12 +85,7 @@
     justify-items:start;
   }
 
-  /* ===== Grille numéros ===== */
-  .gridWrap{
-    grid-column:1;
-    grid-row:1;
-    position:relative;
-  }
+  /* Grille numéros */
   .grid{
     display:grid;
     grid-template-columns:repeat(3, var(--cw));
@@ -124,30 +117,20 @@
   .press{animation:press .14s ease-in-out}
   @keyframes press{0%{filter:brightness(1)}50%{filter:brightness(.6)}100%{filter:brightness(1)}}
 
-  /* refs pendant capture */
+  /* Refs pendant capture (uniquement) */
   .refpick{
     outline:2px solid rgba(57,255,20,0.55);
     box-shadow:inset 0 0 0 2px rgba(57,255,20,0.55);
   }
 
-  /* ===== Encadrements verts style photo (sur le tapis) ===== */
-  .hlRect{
-    position:absolute;
-    pointer-events:none;
-    border:var(--hl) solid var(--neon);
-    border-radius:8px;
-    box-shadow:0 0 14px rgba(57,255,20,0.25), inset 0 0 0 2px rgba(0,0,0,0.25);
-    display:none;
-  }
-
-  /* ===== Panels DOZ / COL (cases de côté) ===== */
+  /* Panels DOZ / COL (cases) */
   .dozPanel{
     grid-column:2;
     grid-row:1;
     display:flex;
     flex-direction:column;
     gap:var(--gap);
-    margin-top:calc(var(--ch) + var(--gap));
+    margin-top:calc(var(--ch) + var(--gap)); /* sous le 0 */
   }
   .dozBox{
     width:56px;
@@ -200,15 +183,15 @@
   }
   .colBox .stake{font-size:16px}
 
-  /* ===== Encadré vert AUSSI sur les cases de côté ===== */
+  /* ✅ Juste colorer les cases DOZ/COL en vert (propre) */
   .hl-neon{
     outline:3px solid var(--neon);
-    box-shadow:inset 0 0 0 3px var(--neon), 0 0 10px rgba(57,255,20,.25);
+    box-shadow:inset 0 0 0 3px var(--neon), 0 0 10px rgba(57,255,20,.20);
   }
   .hl-neon::before{
     content:"";
     position:absolute; inset:0;
-    background:rgba(57,255,20,0.10);
+    background:rgba(57,255,20,0.12);
     border-radius:10px;
     z-index:1;
   }
@@ -240,11 +223,7 @@
     <div id="board">
       <div class="boardLayout">
 
-        <div class="gridWrap" id="gridWrap">
-          <div class="hlRect" id="hlCol"></div>
-          <div class="hlRect" id="hlDoz"></div>
-          <div class="grid" id="grid"></div>
-        </div>
+        <div class="grid" id="grid"></div>
 
         <div class="dozPanel">
           <div class="dozBox" id="DOZ1"><div class="label">DOZ1</div><div class="stake" id="DOZ1v"></div></div>
@@ -295,6 +274,7 @@ function spinToDozCol(n){
   return [doz,col];
 }
 
+/* Whiddarte */
 const WHIDDARTE = [1,1,2,2,4,4,8,8,16,16,32,32];
 
 function clamp37(n){ n = Number(n)||0; n%=37; if(n<0) n+=37; return n; }
@@ -360,7 +340,7 @@ function buildGrid(){
   });
 }
 
-/* ===== Side boxes refs ===== */
+/* Side boxes */
 const sideBox = {
   DOZ1: document.getElementById('DOZ1'),
   DOZ2: document.getElementById('DOZ2'),
@@ -385,76 +365,7 @@ function clearSideStakes(){
   }
 }
 
-/* ===== Overlays encadrements style photo (sur le tapis) ===== */
-const hlCol = document.getElementById('hlCol');
-const hlDoz = document.getElementById('hlDoz');
-
-function cssNum(varName){
-  const v = getComputedStyle(document.documentElement).getPropertyValue(varName).trim();
-  return parseFloat(v.replace("px","")) || 0;
-}
-function setRect(el, x, y, w, h){
-  el.style.left = x + "px";
-  el.style.top  = y + "px";
-  el.style.width  = w + "px";
-  el.style.height = h + "px";
-  el.style.display = "block";
-}
-function hideRect(el){ el.style.display = "none"; }
-
-function renderGridHighlights(due){
-  hideRect(hlCol);
-  hideRect(hlDoz);
-
-  if(state.capturing) return;
-  if(!due.length) return;
-
-  const colCount = new Map();
-  const dozCount = new Map();
-  for(const p of due){
-    if(p.col) colCount.set(p.col, (colCount.get(p.col)||0)+1);
-    if(p.doz) dozCount.set(p.doz, (dozCount.get(p.doz)||0)+1);
-  }
-
-  const pickMax = (m)=>{
-    let best=null, bv=-1;
-    for(const [k,v] of m.entries()){
-      if(v>bv){bv=v;best=k;}
-    }
-    return best;
-  };
-
-  const col = pickMax(colCount);
-  const doz = pickMax(dozCount);
-
-  const cw  = cssNum("--cw");
-  const ch  = cssNum("--ch");
-  const gap = cssNum("--gap");
-  const hl  = cssNum("--hl");
-
-  const yStart = ch + gap;       // sous le 0
-  const colH   = 12*ch + 11*gap; // 12 lignes
-
-  if(col){
-    const colIdx = (col==="COL1")?0 : (col==="COL2")?1 : 2;
-    const x0 = colIdx*(cw+gap);
-    const y0 = yStart;
-    const w  = cw;
-    const h  = colH;
-    setRect(hlCol, x0 - (hl/2), y0 - (hl/2), w + hl, h + hl);
-  }
-
-  if(doz){
-    const dozIdx = (doz==="DOZ1")?0 : (doz==="DOZ2")?1 : 2;
-    const x0 = 0;
-    const w  = 3*cw + 2*gap;
-    const y0 = yStart + (dozIdx*4)*(ch+gap);
-    const h  = 4*ch + 3*gap;
-    setRect(hlDoz, x0 - (hl/2), y0 - (hl/2), w + hl, h + hl);
-  }
-}
-
-/* ===== Refs capture ===== */
+/* Refs capture */
 function renderRefPick(){
   document.querySelectorAll('.cell').forEach(el=> el.classList.remove('refpick'));
   if(!state.capturing) return;
@@ -464,6 +375,7 @@ function renderRefPick(){
   }
 }
 
+/* Stakes due next */
 function dueNextGroupStakes(){
   const nxt = state.spinIndex + 1;
   const due = state.pending.filter(p => p.due === nxt);
@@ -478,18 +390,18 @@ function dueNextGroupStakes(){
   return {due, gStakes};
 }
 
-function renderSideStakesAndHL(due, gStakes){
+function renderSideOnly(due, gStakes){
   clearSideStakes();
   if(state.capturing) return;
   if(!due.length) return;
 
   for(const [g, v] of gStakes.entries()){
     if(boxVal[g]) boxVal[g].textContent = String(v);
-    if(sideBox[g]) sideBox[g].classList.add("hl-neon"); // encadré vert sur cases de côté
+    if(sideBox[g]) sideBox[g].classList.add("hl-neon");
   }
 }
 
-/* ===== HUD ===== */
+/* HUD */
 function updateHUD(){
   const cnt=document.getElementById('cnt');
   const last=document.getElementById('last');
@@ -530,15 +442,12 @@ function updateHUD(){
 
 function render(){
   renderRefPick();
-
   const {due, gStakes} = dueNextGroupStakes();
-  renderSideStakesAndHL(due, gStakes);   // ✅ encadré vert sur cases de côté
-  renderGridHighlights(due);             // ✅ encadré vert sur tapis (photo)
-
+  renderSideOnly(due, gStakes);
   updateHUD();
 }
 
-/* ===== Settlement (Whiddarte) ===== */
+/* Settlement Whiddarte */
 function settleDue(spin){
   const i = state.spinIndex;
   if(!state.pending.length) return;
@@ -575,7 +484,7 @@ function settleDue(spin){
   autoInitOnNewBest();
 }
 
-/* ===== Apprentissage ===== */
+/* Apprentissage */
 function updateAfterMapping(prev, cur){
   if(!state.refSet.has(prev)) return;
   const [doz, col] = spinToDozCol(cur);
@@ -594,7 +503,7 @@ function scheduleIfRef(cur){
   });
 }
 
-/* ===== Main ===== */
+/* Main */
 function pushNumber(n){
   state.baseStake = getBaseStake();
   const spin = clamp37(n);
@@ -621,7 +530,7 @@ function pushNumber(n){
     }
     if(prev !== null) updateAfterMapping(prev, spin);
 
-    if(state.refs.length >= 12) state.capturing = false; // refs éteintes ensuite
+    if(state.refs.length >= 12) state.capturing = false; // éteint refs ensuite
     render();
     return;
   }
@@ -632,7 +541,7 @@ function pushNumber(n){
   render();
 }
 
-/* ===== Controls ===== */
+/* Controls */
 document.getElementById('btnR').addEventListener('click', ()=>{
   state.after = new Map();
   state.pending = [];
