@@ -9,6 +9,7 @@
     --bg:#0F1E17; --panel:#12261E; --txt:#E6FFE9;
     --red:#B91C1C; --blk:#0B0B0B; --zero:#1F6F43;
     --outline:#39FF14; --stake:#00BFFF; --hole:#FFA500;
+    --betbg:#173A31;
   }
   html,body{margin:0;height:100%;background:var(--bg);color:var(--txt);
     font-family:-apple-system,system-ui,Segoe UI,Roboto,Helvetica,Arial}
@@ -34,28 +35,151 @@
   .gain{color:#39FF14} .loss{color:#FFA500}
   #hud .last{max-width:80vw; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
 
-  /* Tapis */
-  #board{background:var(--panel);padding:8px;border-radius:12px;box-shadow:0 2px 8px rgba(0,0,0,.4);transform-origin:top center}
-  .grid{display:grid;grid-template-columns:repeat(3, 44px);grid-auto-rows:32px;gap:3px}
-  .cell{position:relative;width:44px;height:32px;display:flex;align-items:center;justify-content:center;
-        color:var(--txt);font-weight:800;border-radius:6px;user-select:none;-webkit-tap-highlight-color:transparent;overflow:hidden}
+  /* ===== Board container (centré) ===== */
+  #board{
+    background:var(--panel);
+    padding:8px;
+    border-radius:12px;
+    box-shadow:0 2px 8px rgba(0,0,0,.4);
+    transform-origin:top center;
+  }
+
+  /* Layout: grille + colonne DOZ à droite, puis row COL en bas */
+  .boardLayout{
+    display:grid;
+    grid-template-columns: auto 56px; /* grille + panel DOZ */
+    grid-template-rows: auto 32px;    /* grille + panel COL */
+    column-gap:8px;
+    row-gap:8px;
+    align-items:start;
+    justify-items:start;
+  }
+
+  /* ===== Grille numéros ===== */
+  .grid{
+    grid-column:1;
+    grid-row:1;
+    display:grid;
+    grid-template-columns:repeat(3, 44px);
+    grid-auto-rows:32px;
+    gap:3px;
+  }
+  .cell{
+    position:relative;
+    width:44px;height:32px;
+    display:flex;align-items:center;justify-content:center;
+    color:var(--txt);
+    font-weight:800;
+    border-radius:6px;
+    user-select:none;
+    -webkit-tap-highlight-color:transparent;
+    overflow:hidden;
+  }
   .zero{grid-column:1/span 3;width:calc(44px*3 + 3px*2);background:var(--zero)}
   .red{background:var(--red)} .blk{background:var(--blk)}
-  .num{pointer-events:none;z-index:2}
+
+  /* Numéros -20% */
+  .num{pointer-events:none;z-index:2;font-size:13px;line-height:1;}
+
   .hit{position:absolute;inset:0;border-radius:6px;cursor:pointer;z-index:3}
 
-  /* surlignage */
-  .outline-doz{outline:3px solid var(--outline);box-shadow:inset 0 0 0 3px var(--outline)}
-  .outline-col{outline:3px solid var(--hole);box-shadow:inset 0 0 0 3px var(--hole)}
-  .veil-doz::before{content:"";position:absolute;inset:0;background:rgba(57,255,20,0.18);z-index:1}
-  .veil-col::before{content:"";position:absolute;inset:0;background:rgba(255,165,0,0.18);z-index:1}
-
-  .badge{position:absolute;right:4px;top:3px;color:var(--stake);font-weight:900;font-size:12px;text-shadow:0 1px 0 rgba(0,0,0,.5);z-index:4}
   .press{animation:press .14s ease-in-out}
   @keyframes press{0%{filter:brightness(1)}50%{filter:brightness(.6)}100%{filter:brightness(1)}}
 
-  /* refs pendant capture (simple outline verte fine) */
+  /* refs pendant capture */
   .refpick{outline:2px solid rgba(57,255,20,0.55); box-shadow:inset 0 0 0 2px rgba(57,255,20,0.55)}
+
+  /* ===== Panels groupes (DOZ / COL) ===== */
+  .dozPanel{
+    grid-column:2;
+    grid-row:1;
+    display:flex;
+    flex-direction:column;
+    gap:3px;
+    margin-top:35px; /* pour s'aligner visuellement sous le 0 */
+  }
+  .dozBox{
+    width:56px;
+    height:calc(32px*4 + 3px*3); /* 4 cases + 3 gaps */
+    background:var(--betbg);
+    border-radius:10px;
+    border:2px solid rgba(0,0,0,0.35);
+    position:relative;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    text-align:center;
+    font-weight:900;
+    color:var(--stake);
+  }
+  .dozBox .label{
+    position:absolute;
+    left:6px; top:6px;
+    font-size:11px;
+    color:rgba(230,255,233,0.85);
+    font-weight:900;
+  }
+  .dozBox .stake{
+    font-size:18px;
+    color:var(--outline);
+    text-shadow:0 1px 0 rgba(0,0,0,.45);
+  }
+
+  .colPanel{
+    grid-column:1;
+    grid-row:2;
+    display:grid;
+    grid-template-columns:repeat(3, 44px);
+    gap:3px;
+  }
+  .colBox{
+    width:44px;
+    height:32px;
+    background:var(--betbg);
+    border-radius:10px;
+    border:2px solid rgba(0,0,0,0.35);
+    position:relative;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    text-align:center;
+    font-weight:900;
+    color:var(--stake);
+  }
+  .colBox .label{
+    position:absolute;
+    left:6px; top:5px;
+    font-size:10px;
+    color:rgba(230,255,233,0.85);
+    font-weight:900;
+  }
+  .colBox .stake{
+    font-size:16px;
+    color:var(--outline);
+    text-shadow:0 1px 0 rgba(0,0,0,.45);
+  }
+
+  /* Highlight group boxes */
+  .hl-doz{
+    outline:3px solid var(--outline);
+    box-shadow:inset 0 0 0 3px var(--outline), 0 0 10px rgba(57,255,20,.25);
+  }
+  .hl-col{
+    outline:3px solid var(--hole);
+    box-shadow:inset 0 0 0 3px var(--hole), 0 0 10px rgba(255,165,0,.20);
+  }
+
+  /* Optional: little veil inside group boxes when active */
+  .hl-doz::before{
+    content:""; position:absolute; inset:0;
+    background:rgba(57,255,20,0.10);
+    border-radius:10px;
+  }
+  .hl-col::before{
+    content:""; position:absolute; inset:0;
+    background:rgba(255,165,0,0.10);
+    border-radius:10px;
+  }
 </style>
 </head>
 <body>
@@ -82,13 +206,27 @@
     </div>
 
     <div id="board">
-      <div class="grid" id="grid"></div>
+      <div class="boardLayout">
+        <div class="grid" id="grid"></div>
+
+        <div class="dozPanel">
+          <div class="dozBox" id="doz1"><div class="label">DOZ1</div><div class="stake" id="doz1v"></div></div>
+          <div class="dozBox" id="doz2"><div class="label">DOZ2</div><div class="stake" id="doz2v"></div></div>
+          <div class="dozBox" id="doz3"><div class="label">DOZ3</div><div class="stake" id="doz3v"></div></div>
+        </div>
+
+        <div class="colPanel">
+          <div class="colBox" id="col1"><div class="label">COL1</div><div class="stake" id="col1v"></div></div>
+          <div class="colBox" id="col2"><div class="label">COL2</div><div class="stake" id="col2v"></div></div>
+          <div class="colBox" id="col3"><div class="label">COL3</div><div class="stake" id="col3v"></div></div>
+        </div>
+      </div>
     </div>
   </div>
 </div>
 
 <script>
-/* ===== Constantes tapis ===== */
+/* ===== Constantes ===== */
 const ROUGE = new Set([1,3,5,7,9,12,14,16,18,19,21,23,25,27,30,32,34,36]);
 const GRID = [
   [1,4,7,10,13,16,19,22,25,28,31,34],
@@ -144,26 +282,20 @@ const state = {
   bank: 0,
   bestBank: 0,
 
-  // Phase capture
   capturing: true,
   refs: [],
   refSet: new Set(),
 
-  // Dernier événement observé après ref: ref -> {doz,col}
-  after: new Map(),
-
-  // per-ref: ref -> {lvl, profit}
-  refState: new Map(),
-
-  // pending bets: {due, ref, doz, col}
-  pending: []
+  after: new Map(),      // ref -> {doz,col}
+  refState: new Map(),   // ref -> {lvl, profit}
+  pending: []            // {due, ref, doz, col}
 };
 
 function autoInitOnNewBest(){
   if(state.bank > state.bestBank){
     state.bestBank = state.bank;
     for(const st of state.refState.values()) st.lvl = 0;
-    state.pending = []; // purge pour éviter incohérences
+    state.pending = [];
   }
 }
 
@@ -172,7 +304,6 @@ function cellHTML(n){
   const cls=(n===0)?"cell zero":("cell "+(ROUGE.has(n)?"red":"blk"));
   return `<div class="${cls}" data-n="${n}">
     <div class="num">${n}</div>
-    <div class="badge" style="display:none">0</div>
     <div class="hit"></div>
   </div>`;
 }
@@ -195,91 +326,73 @@ function buildGrid(){
   });
 }
 
-/* ===== Highlight ===== */
-function clearMarks(){
-  document.querySelectorAll('.cell').forEach(el=>{
-    el.classList.remove('outline-doz','outline-col','veil-doz','veil-col','refpick');
-    const b = el.querySelector('.badge');
-    if(b) b.style.display='none';
-  });
+/* ===== Helpers groups UI ===== */
+const box = {
+  DOZ1: document.getElementById('doz1'),
+  DOZ2: document.getElementById('doz2'),
+  DOZ3: document.getElementById('doz3'),
+  COL1: document.getElementById('col1'),
+  COL2: document.getElementById('col2'),
+  COL3: document.getElementById('col3'),
+};
+const boxVal = {
+  DOZ1: document.getElementById('doz1v'),
+  DOZ2: document.getElementById('doz2v'),
+  DOZ3: document.getElementById('doz3v'),
+  COL1: document.getElementById('col1v'),
+  COL2: document.getElementById('col2v'),
+  COL3: document.getElementById('col3v'),
+};
+
+function clearGroupBoxes(){
+  for(const k of Object.keys(box)){
+    box[k].classList.remove('hl-doz','hl-col');
+    boxVal[k].textContent = "";
+  }
 }
 
-/* Calcule ce qu'on doit jouer AU PROCHAIN COUP (due = spinIndex+1) */
-function dueNextPlan(){
+function renderRefPick(){
+  document.querySelectorAll('.cell').forEach(el=> el.classList.remove('refpick'));
+  for(const r of state.refs){
+    const el = document.querySelector(`.cell[data-n="${r}"]`);
+    if(el) el.classList.add('refpick');
+  }
+}
+
+/* Calcule les groupes dûs au prochain coup + mises à afficher dans cases */
+function dueNextGroupStakes(){
   const nxt = state.spinIndex + 1;
   const due = state.pending.filter(p => p.due === nxt);
-
-  if(!due.length) return {due:[], groups:[], bets:new Map()};
-
-  // bets par numéro (1..36) = somme des mises (douz + col)
-  const bets = new Map(); // n -> stakeTotal
-  const groups = []; // list {ref, doz, col, stake, lvlMult}
+  const gStakes = new Map(); // group -> total stake
 
   for(const p of due){
     const st = state.refState.get(p.ref) || {lvl:0};
     const stake = unitForLvl(st.lvl);
-    const lvlMult = WHIDDARTE[Math.min(st.lvl, WHIDDARTE.length-1)];
 
-    groups.push({ref:p.ref, doz:p.doz, col:p.col, stake, lvlMult});
-
-    // ajoute stake sur tous numéros de la doz + col
-    for(let n=1;n<=36;n++){
-      let add = 0;
-      if(p.doz && inGroup(p.doz, n)) add += stake;
-      if(p.col && inGroup(p.col, n)) add += stake;
-      if(add>0) bets.set(n, (bets.get(n)||0) + add);
-    }
+    if(p.doz) gStakes.set(p.doz, (gStakes.get(p.doz)||0) + stake);
+    if(p.col) gStakes.set(p.col, (gStakes.get(p.col)||0) + stake);
   }
-  return {due, groups, bets};
+  return {due, gStakes};
 }
 
-function render(){
-  clearMarks();
+function renderGroupBoxes(){
+  clearGroupBoxes();
 
-  if(state.capturing){
-    // Pendant capture: juste marquer les refs choisies (pas de mises)
-    for(const r of state.refs){
-      const el = document.querySelector(`.cell[data-n="${r}"]`);
-      if(el) el.classList.add('refpick');
-    }
-    updateHUD();
-    return;
+  if(state.capturing) return;
+
+  const {due, gStakes} = dueNextGroupStakes();
+  if(!due.length) return;
+
+  for(const [g, v] of gStakes.entries()){
+    if(!box[g]) continue;
+    boxVal[g].textContent = String(v);
+    if(g.startsWith("DOZ")) box[g].classList.add('hl-doz');
+    if(g.startsWith("COL")) box[g].classList.add('hl-col');
   }
-
-  // Phase jeu: colorier DOZ/COL demandées au prochain coup + badges de mise
-  const plan = dueNextPlan();
-
-  // colorier en vert la/les douzaines, en orange la/les colonnes,
-  // et l'intersection aura les deux effets (visuellement plus chargé, parfait)
-  for(const g of plan.groups){
-    for(let n=1;n<=36;n++){
-      const el = document.querySelector(`.cell[data-n="${n}"]`);
-      if(!el) continue;
-      if(g.doz && inGroup(g.doz,n)){
-        el.classList.add('outline-doz','veil-doz');
-      }
-      if(g.col && inGroup(g.col,n)){
-        el.classList.add('outline-col','veil-col');
-      }
-    }
-  }
-
-  // badges mises
-  for(const [n, v] of plan.bets.entries()){
-    const el = document.querySelector(`.cell[data-n="${n}"]`);
-    if(!el) continue;
-    const b = el.querySelector('.badge');
-    if(b){
-      b.textContent = String(v);
-      b.style.display = 'block';
-    }
-  }
-
-  updateHUD(plan);
 }
 
 /* ===== HUD ===== */
-function updateHUD(plan=null){
+function updateHUD(){
   const cnt=document.getElementById('cnt');
   const last=document.getElementById('last');
   const delta=document.getElementById('delta');
@@ -289,18 +402,22 @@ function updateHUD(plan=null){
 
   cnt.textContent = `${state.refs.length}/12`;
   best.textContent = String(state.bestBank);
-
   last.textContent = state.last5.length ? state.last5.join(' ') : '—';
 
   if(state.capturing){
     statusRow.textContent = `Capture refs: clique 12 numéros (reste ${Math.max(0, 12 - state.refs.length)})`;
   } else {
-    const p = plan || dueNextPlan();
-    if(!p.due.length){
+    const nxt = state.spinIndex + 1;
+    const due = state.pending.filter(p => p.due === nxt);
+    if(!due.length){
       statusRow.textContent = `En attente: aucun jeu demandé au prochain coup`;
     } else {
-      // résumé lisible
-      const parts = p.groups.map(g=>`${g.ref} → ${g.doz}+${g.col} (mise ${g.stake})`);
+      const parts = due.map(p=>{
+        const st = state.refState.get(p.ref) || {lvl:0};
+        const mult = WHIDDARTE[Math.min(st.lvl, WHIDDARTE.length-1)];
+        const stake = unitForLvl(st.lvl);
+        return `${p.ref} → ${p.doz}+${p.col} (x${mult} = ${stake})`;
+      });
       statusRow.textContent = `Prochain coup: ${parts.join(" | ")}`;
     }
   }
@@ -313,7 +430,13 @@ function updateHUD(plan=null){
   bal.textContent = `${state.bank}`;
 }
 
-/* ===== Settlement Alien ===== */
+function render(){
+  renderRefPick();
+  renderGroupBoxes();
+  updateHUD();
+}
+
+/* ===== Settlement (montante Whiddarte) ===== */
 function settleDue(spin){
   const i = state.spinIndex;
   if(!state.pending.length) return;
@@ -330,8 +453,7 @@ function settleDue(spin){
     let delta = 0;
 
     if(spin === 0){
-      // 0 = perte sur les deux chances
-      delta = -2 * stake;
+      delta = -2 * stake; // perte sur DOZ + COL
       st.lvl = Math.min(st.lvl + 1, WHIDDARTE.length-1);
     } else {
       const hitD = p.doz && inGroup(p.doz, spin);
@@ -340,7 +462,7 @@ function settleDue(spin){
       delta += hitD ? (2*stake) : (-stake);
       delta += hitC ? (2*stake) : (-stake);
 
-      // montante: si double touche => reset, sinon progresse
+      // Montante: double touche => reset, sinon progresse
       if(hitD && hitC) st.lvl = 0;
       else st.lvl = Math.min(st.lvl + 1, WHIDDARTE.length-1);
     }
@@ -350,7 +472,6 @@ function settleDue(spin){
   }
 
   state.pending = keep;
-
   autoInitOnNewBest();
 }
 
@@ -358,15 +479,15 @@ function settleDue(spin){
 function updateAfterMapping(prev, cur){
   if(!state.refSet.has(prev)) return;
   const [doz, col] = spinToDozCol(cur);
-  if(!doz || !col) return; // si cur==0 => rien à enregistrer
+  if(!doz || !col) return; // ignore si cur==0
   state.after.set(prev, {doz, col});
 }
 
-/* ===== Jeu: quand ref sort, programmer bet au coup suivant ===== */
+/* ===== Jeu: si ref sort, programmer DOZ/COL au coup suivant ===== */
 function scheduleIfRef(cur){
   if(!state.refSet.has(cur)) return;
   const info = state.after.get(cur);
-  if(!info) return; // pas encore appris ce qu'il y a "après"
+  if(!info) return; // pas encore appris
   state.pending.push({
     due: state.spinIndex + 1,
     ref: cur,
@@ -375,7 +496,7 @@ function scheduleIfRef(cur){
   });
 }
 
-/* ===== MAIN click ===== */
+/* ===== Main click ===== */
 function pushNumber(n){
   state.baseStake = getBaseStake();
   const spin = clamp37(n);
@@ -384,11 +505,9 @@ function pushNumber(n){
 
   state.spinIndex += 1;
 
-  // last5
   state.last5.push(spin);
   if(state.last5.length > 5) state.last5.shift();
 
-  // settlement (si phase jeu)
   state.lastDelta = 0;
   if(!state.capturing){
     const before = state.bank;
@@ -396,35 +515,27 @@ function pushNumber(n){
     state.lastDelta = state.bank - before;
   }
 
-  // capture refs
   if(state.capturing){
     if(!state.refSet.has(spin)){
       state.refs.push(spin);
       state.refSet.add(spin);
       state.refState.set(spin, {lvl:0, profit:0});
     }
-    // apprentissage déjà possible même en capture
     if(prev !== null) updateAfterMapping(prev, spin);
-
-    if(state.refs.length >= 12){
-      state.capturing = false;
-    }
+    if(state.refs.length >= 12) state.capturing = false;
     render();
     return;
   }
 
-  // apprentissage: prev ref -> on enregistre le coup suivant
   if(prev !== null) updateAfterMapping(prev, spin);
-
-  // si spin est une ref, on programme le bet pour le prochain coup
   scheduleIfRef(spin);
 
   render();
 }
 
-/* ===== Contrôles ===== */
+/* ===== Controls ===== */
 document.getElementById('btnR').addEventListener('click', ()=>{
-  // refresh Alien: purge apprentissage + pending, sans reset total ni refs
+  // refresh: purge apprentissage + pending, sans reset refs ni bank
   state.after = new Map();
   state.pending = [];
   state.lastDelta = 0;
@@ -432,7 +543,6 @@ document.getElementById('btnR').addEventListener('click', ()=>{
 });
 
 document.getElementById('btnX').addEventListener('click', ()=>{
-  // reset total (important)
   state.spinIndex = -1;
   state.last5 = [];
   state.lastDelta = 0;
